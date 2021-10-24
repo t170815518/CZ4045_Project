@@ -1,0 +1,45 @@
+OLED is coming
+Every flagship-class phone has an OLED display and it looks like that’s going to be true too for notebooks. 
+Increasingly, we are seeing more flagship-class notebooks outfitted with equally high-end OLED displays. 
+ASUS did this earlier with the ZenBook Pro Duo 15 OLED and the ZenBook Flip S. And now, they are putting an OLED display in a traditional clamshell-style notebook. 
+This is the new ZenBook 14X OLED. 
+
+The ZenBook 14X is the latest addition to ASUS’ ever-growing ZenBook 14 lineup. 
+It joins others like the dual-screen ZenBook Duo 14 and the more basic ZenBook 14 UX425. 
+If you are looking for a traditional clamshell-style notebook, this is ASUS’ top-tier option.
+
+Design & specifications
+With its angular profile and subtle but distinctive spun-metal finish on the front panel, the ZenBook 14X is unmistakably a ZenBook. 
+It comes in Pine Grey, which is supposed to be a light shade of grey but ends up looking like black most of the time. Build quality is good. 
+There’s little flex in the chassis and the notebook generally feels like a quality item.
+
+The highlight of this notebook is its display. 
+It’s a 14-inch OLED display with a resolution of 2880 x 1800 pixels. 
+ASUS says it covers 100% of the P3 colour space, is Pantone validated, and has 550 nits of brightness. 
+It’s hard to verify these claims without a professional measuring tool, but the fact is this display looks excellent. 
+As you’d expect, blacks are a particular highlight, but equally important, other colours look vivid but realistic and the display gets sufficiently bright. 
+It makes even a great IPS display look pedestrian.  
+
+At 16.9mm and 1.4kg heavy, it’s slightly chunkier and heavier than other similarly-sized ZenBooks. 
+There are good reasons for that: it has better ports and discrete graphics. 
+Apart from two USB-C Thunderbolt 4 ports, it also has a full-sized HDMI 2.0b port, a USB 3.2 Gen 2 Type-A port, a 3.5mm audio jack, and a microSD card reader. 
+
+ASUS offers the ZenBook 14X in two configurations and here are the specifications of the two models.
+
+Clearly, the two are largely identical except the base model has integrated graphics and doesn’t get ASUS’ ScreenPad. 
+Since the price difference isn't exorbitant, I suspect many will be tempted to go for the step-up model since it has discrete graphics. 
+The unit I'm testing is the step-up UX5400 and we’ll see the benchmark results on the next page if the extra S$200 will be a worthwhile outlay.
+
+Keyboard and trackpad
+ZenBook keyboards have typically been decent and it’s no different for the ZenBook 14X. 
+The keys are of a good size and the layout is fairly conventional – save for the additional column of navigational keys. 
+There’s not much in the way of key travel but the general feeling of the keys is mostly positive, and at least they don’t feel vague and mushy. 
+The keyboard also benefits from ASUS' ErgoLift design which uses the display cover as a prop to lift the back of the notebook up by a couple of degrees. 
+This creates a gentle tilt that makes it more pleasant to type on. Overall, this is a very solid keyboard.
+
+The trackpad is ASUS’ ScreenPad 2.0 and you can use it as a regular trackpad or as a secondary display. 
+As a secondary display, it can be used to show optimised versions of popular apps like Spotify or shortcuts for other apps like Word and Excel. 
+I wrote about the ScreenPad at length in my review of the ZenBook 14 UX434 and my thoughts haven’t changed. 
+As a secondary display, its utility is debatable – it isn’t large enough to be easily legible and the picture quality is quite fuzzy. 
+But as a trackpad, because it's large and responsive, I have no complaints. 
+The extra functionality will take a little exploration to see how it best fits your personal needs, but since the primary trackpad function works well, the secondary display is a nice extra.
