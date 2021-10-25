@@ -1,5 +1,5 @@
 *This project is for Assignment 1, Course CZ4045: NLP at NTU*
-# Dependency 
+# Dependency
 ```
 numpy~=1.21.3
 gsdmm~=0.1
@@ -13,18 +13,18 @@ tqdm~=4.62.3
 wordcloud~=1.8.1
 ```
 
-To install the dependencies, run 
+To install the dependencies, run
 ```
 pip install -r requirements.txt
 ```
-# Usage 
+# Usage
 For Jupyter Notebook files, start Jupyter Notebook server and run all codes.
 + Most frequent Noun - Adjective pairs for each rating.ipynb
 + indicativeADJP.ipynb
 + Tokenization and Stemming.ipynb
 
 For writing style analysis, run `python writing_style.py`. The program outputs the analysis of different domains separately, e.g.
-the error identified by the grammar checker 
+the error identified by the grammar checker
 ```
 =====================Analyze ['data/hardware_zone_1.txt', 'data/hardware_zone_2.txt'] ===============================
 Offset 46, length 4, Rule ID: COMMA_COMPOUND_SENTENCE
@@ -36,10 +36,10 @@ Suggestion: , and
 For POS tagging, run `python POS_tagging.py`. The program outputs the result
 produced by two tokenizers, i.e., unigram and perceptron:
 ```
-The sentence chosen is: 
+The sentence chosen is:
  Response I got was "because it's ethnic hair, we had to charge the $55".
 ----------------------------------------
-POS tagging using unigram: 
+POS tagging using unigram:
  [('Response', 'NN'), ('I', 'PPSS'), ('got', 'VBD'), ('was', 'BEDZ'), ('``', '``'), ('because', 'CS'), ('it', 'PPS'), ("'s", None), ('ethnic', 'JJ'), ('hair', 'NN'), (',', ','), ('we', 'PPSS'), ('had', 'HVD'), ('to', 'TO'), ('charge', 'NN'), ('the', 'AT'), ('$', None), ('55', 'CD'), ("''", "''"), ('.', '.')]
 POS tagging using nltk:
  [('Response', 'NN'), ('I', 'PRP'), ('got', 'VBD'), ('was', 'VBD'), ('``', '``'), ('because', 'IN'), ('it', 'PRP'), ("'s", 'VBZ'), ('ethnic', 'JJ'), ('hair', 'NN'), (',', ','), ('we', 'PRP'), ('had', 'VBD'), ('to', 'TO'), ('charge', 'VB'), ('the', 'DT'), ('$', '$'), ('55', 'CD'), ("''", "''"), ('.', '.')]
@@ -47,15 +47,15 @@ POS tagging using nltk:
 ```
 
 
-## Application Usage 
-To run topic modeling of a business, an example is 
+## Application Usage
+To run topic modeling of a business, an example is
 ```
 python review_analyzer.py --business AktuBx1W7c3ZdzwuaOp8xg --topic_num 10 --is_visualize True
 ```
-+ `--business`: str, the index of business to analyze. Empty string by default, which means 
++ `--business`: str, the index of business to analyze. Empty string by default, which means
 the complete dataset is analyzed as a whole.
-+ `--topic_num`: a positive integer, the number of topics to modeled. 
-+ `--is_visualize`: bool, True means to visualize the word clouds and export them locally 
++ `--topic_num`: a positive integer, the number of topics to modeled.
++ `--is_visualize`: bool, True means to visualize the word clouds and export them locally
 ### Output
 The example of console output:
 ```
@@ -96,5 +96,5 @@ Topic 0:  ['service', 'delicious', 'always', 'ordered', 'good', 'friendly', 'ive
 Topic 29:  ['go', 'like', 'shrimp', 'little', 'place', 'chicken', 'chinese', 'order', 'good', 'food']
 ```
 
-The word clouds are exported as `png`file in the current directory, e.g. 
+The word clouds are exported as `png`file in the current directory, e.g.
 `LDA_8.png` and `GSDMM_16.png`
