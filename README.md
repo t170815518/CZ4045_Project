@@ -1,4 +1,12 @@
 *This project is for Assignment 1, Course CZ4045: NLP at NTU*
+
+**Team members**
++ KOH YIANG DHEE, MITCHELL
++ RYAN LEE RUIXIANG
++ LI PINGRUI
++ WANG BINLI
++ TANG YUTING
+
 # Dependency 
 ```
 numpy~=1.21.3
