@@ -7,7 +7,7 @@ import time
 import torch
 import torch.nn as nn
 import torch.onnx
-import numpy as np
+
 import data
 import model
 
@@ -16,12 +16,12 @@ parser = argparse.ArgumentParser(description='PyTorch Wikitext-2 RNN/LSTM/GRU/Tr
 parser.add_argument('--data', type=str, default='./data/wikitext-2',
                     help='location of the data corpus')
 parser.add_argument('--model', type=str, default='LSTM',
-                    help='type of recurrent net (RNN_TANH, RNN_RELU, LSTM, GRU, Transformer)')
-parser.add_argument('--emsize', type=int, default=30,
+                    help='type of recurrent net (RNN_TANH, RNN_RELU, LSTM, GRU, Transformer, FNN)')
+parser.add_argument('--emsize', type=int, default=200,
                     help='size of word embeddings')
-parser.add_argument('--nhid', type=int, default=100,
+parser.add_argument('--n-gram', type=int, default=8)
+parser.add_argument('--nhid', type=int, default=200,
                     help='number of hidden units per layer')
-parser.add_argument('--n-gram', type=int, default=8, help="the size of n-gram")
 parser.add_argument('--nlayers', type=int, default=2,
                     help='number of layers')
 parser.add_argument('--connect_feature2output', action='store_true',
@@ -44,7 +44,7 @@ parser.add_argument('--seed', type=int, default=1111,
                     help='random seed')
 parser.add_argument('--cuda', action='store_true',
                     help='use CUDA')
-parser.add_argument('--log-interval', type=int, default=100, metavar='N',
+parser.add_argument('--log-interval', type=int, default=200, metavar='N',
                     help='report interval')
 parser.add_argument('--save', type=str, default='model.pt',
                     help='path to save the final model')
@@ -86,25 +86,12 @@ corpus = data.Corpus(args.data)
 # batch processing.
 
 def batchify(data, bsz):
-    if args.model == "FNN":
-        n_grams = []
-        for i in range(0, data.size(0), args.n_gram):
-            if i + args.n_gram >= data.size(0):
-                break
-            gram = data[i: i + args.n_gram]
-            n_grams.append(gram.unsqueeze(0))
-        data = torch.cat(n_grams, dim=0)
-        # Implement sliding window to generate data in sizes of bsz
-        # data = [np.array(data[i:i + bsz]) for i in range(data.shape[0] - bsz + 1)]
-        # data = torch.Tensor(data).to(torch.int64)
-        # return data.to(device)
-    else:
-        # Work out how cleanly we can divide the dataset into bsz parts.
-        nbatch = data.size(0) // bsz
-        # Trim off any extra elements that wouldn't cleanly fit (remainders).
-        data = data.narrow(0, 0, nbatch * bsz)
-        # Evenly divide the data across the bsz batches.
-        data = data.view(bsz, -1).t().contiguous()
+    # Work out how cleanly we can divide the dataset into bsz parts.
+    nbatch = data.size(0) // bsz
+    # Trim off any extra elements that wouldn't cleanly fit (remainders).
+    data = data.narrow(0, 0, nbatch * bsz)
+    # Evenly divide the data across the bsz batches.
+    data = data.view(bsz, -1).t().contiguous()
     return data.to(device)
 
 
@@ -121,7 +108,7 @@ ntokens = len(corpus.dictionary)
 if args.model == 'Transformer':
     model = model.TransformerModel(ntokens, args.emsize, args.nhead, args.nhid, args.nlayers, args.dropout).to(device)
 elif args.model == 'FNN':
-    model = model.FNNModel(ntokens, args.emsize, args.nhid, args.n_gram, device).to(device)
+    model = model.FNNModel(ntokens, args.emsize, args.nhead, args.n_gram, device).to(device)
 else:
     model = model.RNNModel(args.model, ntokens, args.emsize, args.nhid, args.nlayers, args.dropout, args.tied). \
         to(device)
@@ -158,48 +145,34 @@ def get_batch(source, i):
         data = source[i:i + seq_len]
         target = source[i + 1:i + 1 + seq_len].view(-1)
     else:
-        end_id = min(len(source), i + args.batch_size)
-        data = source[i:end_id, :-1]
-        target = source[i:end_id, -1]
+        if i + args.n_gram > len(source):
+            return None, None
+        n_gram_data = source[i: i + args.n_gram]
+        data = n_gram_data[:-1, :]
+        target = n_gram_data[-1, :]
     return data, target
-    # seq_len = min(args.batch_size, len(source) - 1 - i)
-    # if args.model == "FNN":
-    #     # Generate batches based on sliding window
-    #     data = source[i:i + seq_len]
-    #     target = data[:, -1]
-    #     data = data[:, :-1]
-    #     return data, target
-    # else:
-    #     data = source[i:i + seq_len]
-    #     target = source[i + 1:i + 1 + seq_len].view(-1)
-    #     return data, target
 
 
 def evaluate(data_source):
-    model.eval()  # Turn on evaluation mode which disables dropout.
+    # Turn on evaluation mode which disables dropout.
+    model.eval()
+    total_loss = 0.
+    ntokens = len(corpus.dictionary)
+    if args.model != 'Transformer' and args.model != 'FNN':
+        hidden = model.init_hidden(eval_batch_size)
     with torch.no_grad():
-        total_loss = 0.
-        ntokens = len(corpus.dictionary)
-        if args.model != 'Transformer' and args.model != 'FNN':
-            hidden = model.init_hidden(eval_batch_size)
-        with torch.no_grad():
-            for i in range(0, data_source.size(0) - 1, args.batch_size):
-                data, targets = get_batch(data_source, i)
-                if args.model == 'Transformer':
-                    output = model(data)
-                    output = output.view(-1, ntokens)
-                elif args.model == 'FNN':
-                    output = model(data)
-                    output = output.view(-1, ntokens)
-                else:
-                    output, hidden = model(data, hidden)
-                    hidden = repackage_hidden(hidden)
-                total_loss += len(data) * criterion(output, targets).item()
-        return total_loss / (len(data_source) - 1)
-
-
-def get_perplexity(data_source):
-    pass
+        for i in range(0, data_source.size(0) - 1, args.bptt):
+            data, targets = get_batch(data_source, i)
+            if data is None:
+                break
+            if args.model == 'Transformer' or args.model == 'FNN':
+                output = model(data)
+                output = output.view(-1, ntokens)
+            else:
+                output, hidden = model(data, hidden)
+                hidden = repackage_hidden(hidden)
+            total_loss += len(data) * criterion(output, targets).item()
+    return total_loss / (len(data_source) - 1)
 
 
 def train():
@@ -208,21 +181,18 @@ def train():
     total_loss = 0.
     start_time = time.time()
     ntokens = len(corpus.dictionary)
-    if args.model != 'Transformer' and args.model != "FNN":
+    if args.model != 'Transformer' and args.model != 'FNN':
         hidden = model.init_hidden(args.batch_size)
-
-    global train_data
-    train_data = train_data[torch.randperm(train_data.size()[0])]
-    for batch, i in enumerate(range(0, train_data.size(0) - 1, args.batch_size)):
+    for batch, i in enumerate(range(0, train_data.size(0) - 1, args.bptt)):
         data, targets = get_batch(train_data, i)
+        if data is None:
+            break
         # Starting each batch, we detach the hidden state from how it was previously produced.
         # If we didn't, the model would try backpropagating all the way to start of the dataset.
         model.zero_grad()
-        if args.model == 'Transformer':
+        if args.model == 'Transformer' or args.model == 'FNN':
             output = model(data)
             output = output.view(-1, ntokens)
-        elif args.model == 'FNN':
-            output = model(data)
         else:
             hidden = repackage_hidden(hidden)
             output, hidden = model(data, hidden)
@@ -230,13 +200,9 @@ def train():
         loss.backward()
 
         # `clip_grad_norm` helps prevent the exploding gradient problem in RNNs / LSTMs.
-        # torch.nn.utils.clip_grad_norm_(model.parameters(), args.clip)
-
-        optimizer.step()
-
-        # for p in model.parameters():
-        #     p.data.add_(p.grad, alpha=-lr)
-
+        torch.nn.utils.clip_grad_norm_(model.parameters(), args.clip)
+        for p in model.parameters():
+            p.data.add_(p.grad, alpha=-lr)
         total_loss += loss.item()
 
         if batch % args.log_interval == 0 and batch > 0:
@@ -245,7 +211,7 @@ def train():
             print('| epoch {:3d} | {:5d}/{:5d} batches | lr {:02.2f} | ms/batch {:5.2f} | '
                   'loss {:5.2f} | ppl {:8.2f}'.
                   format(epoch, batch,
-                         len(train_data) // args.batch_size, lr, elapsed * 1000 / args.log_interval, cur_loss,
+                         len(train_data) // args.bptt, lr, elapsed * 1000 / args.log_interval, cur_loss,
                          math.exp(cur_loss)))
             total_loss = 0
             start_time = time.time()
@@ -268,7 +234,6 @@ best_val_loss = None
 
 # At any point you can hit Ctrl + C to break out of training early.
 try:
-    optimizer = torch.optim.Adam(model.parameters(), lr=0.001)
     for epoch in range(1, args.epochs + 1):
         epoch_start_time = time.time()
         train()

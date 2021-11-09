@@ -64,7 +64,7 @@ class RNNModel(nn.Module):
 
 
 class FNNModel(nn.Module):
-    def __init__(self, vocab_size: int, embed_dim: int, hidden_dim: int, n_gram: int, device):
+    def __init__(self, vocab_size: int, embed_dim: int, hidden_dim: int, n_gram: int, device, is_share_param: bool):
         """
         Constructor of FNN model
         :param vocab_size: int, the number of unique word in the vocabulary, vocab_size > 0
@@ -112,7 +112,7 @@ class FNNModel(nn.Module):
         :param input: tensor, with the shape of (BATCH_SIZE, N_GRAM - 1)
         :return:
         """
-        word_features = self.word_embedding(input)  # (BATCH_SIZE, SEQUENCE_LENGTH, EMBEDDING_DIM)
+        word_features = self.word_embedding(input.t())  # (BATCH_SIZE, SEQUENCE_LENGTH, EMBEDDING_DIM)
         # (BATCH_SIZE, SEQUENCE_LENGTH * EMBEDDING_DIM)
         concat_features = word_features.view(-1, self.context_size * self.embedding_dim)
         # concat_features = torch.flatten(word_features, start_dim=1)
