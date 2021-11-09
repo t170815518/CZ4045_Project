@@ -64,65 +64,63 @@ class RNNModel(nn.Module):
 
 
 class FNNModel(nn.Module):
-    """
-    implements a language model with a feed-forward network architecture.
-    It has a hidden layer with tanh activation and the output layer is a Softmax layer.
-    The output of the model for each input of (n ´ 1) previous words are the probabilities over the |V| words in
-    the vocabulary for the next word.
-    """
-    def __init__(self, dictionary_size: int, embedding_dim: int, size_n_gram: int, hidden_dim: int,
-                 is_word_emb2output: bool):
+    def __init__(self, vocab_size: int, embed_dim: int, hidden_dim: int, n_gram: int, device):
         """
-        Constructor to create the model and initialize the weight
-        :param dictionary_size:
-        :param embedding_dim:
-        :param size_n_gram:
-        :param hidden_dim:
-        :param is_word_emb2output:
+        Constructor of FNN model
+        :param vocab_size: int, the number of unique word in the vocabulary, vocab_size > 0
+        :param embed_dim: int, the size of vectors after the word id is projected by Matrix C, embed_dim > 0
+        :param hidden_dim: int, the number of units in the only hidden layer, hidden_dim > 0
+        :param n_gram: int, the number of words used to predict the next words = n_gram - 1, n_gram > 1
         """
-        self.size_n_gram = size_n_gram
-        self.embedding_dim = embedding_dim
-        self.is_word_emb2output = is_word_emb2output
+        assert vocab_size > 0 and embed_dim > 0 and hidden_dim > 0 and n_gram > 1
 
-        self.C_matrix = torch.nn.Embedding(dictionary_size, embedding_dim)
-        self.hidden_layer = torch.nn.Linear(size_n_gram * embedding_dim, hidden_dim, bias=True)
-        self.hidden_activiation = torch.nn.Tanh()
-        self.hidden2output = torch.nn.Linear(hidden_dim, dictionary_size, bias=False)
-        self.bias_final = torch.zeros([1, dictionary_size], dtype=torch.float64, requires_grad=True)
-        self.final_activation = torch.nn.Softmax(dim=-1)
+        super(FNNModel, self).__init__()
 
-        if is_word_emb2output:
-            self.emb2output_layer = torch.nn.Linear(size_n_gram * embedding_dim, dictionary_size, bias=False)
+        self.context_size = n_gram - 1
+        self.embedding_dim = embed_dim
+
+        self.word_embedding = torch.nn.Embedding(vocab_size, embed_dim)
+        # hidden layer
+        self.hidden_layer = torch.nn.Linear(self.context_size * embed_dim, hidden_dim, bias=True)
+        self.active_func = torch.nn.Tanh()
+        self.hidden2output = torch.nn.Linear(hidden_dim, vocab_size, bias=False)
+        # direct connection between input features and output layer
+        self.direct_connect_layer = torch.nn.Linear(self.context_size * embed_dim, vocab_size, bias=False)
+        # output bias, a free parameter
+        self.output_bias = torch.zeros(1, vocab_size, requires_grad=True, device=device)
+
+        # softmax layer on top
+        self.softmax = torch.nn.LogSoftmax(dim=-1)  # normalize along the row of tensors
 
         self.init_weights()
 
     def init_weights(self):
         """
-        Initializes the weights in modules
+        Initializes the parameters of the model
         :return:
         """
-        torch.nn.init.xavier_normal_(self.C_matrix.weight)
-        torch.nn.init.xavier_normal_(self.hidden_layer.weight)
-        torch.nn.init.xavier_normal_(self.hidden_layer.bias)
-        torch.nn.init.xavier_normal_(self.hidden2output.weight)
-        torch.nn.init.xavier_normal_(self.bias_final)
-        if self.is_word_emb2output:
-            torch.nn.init.xavier_normal_(self.emb2output_layer.weight)
+        initrange = 0.1
+        torch.nn.init.uniform_(self.word_embedding.weight, -initrange, initrange)
+        torch.nn.init.uniform_(self.hidden_layer.weight, -initrange, initrange)
+        torch.nn.init.uniform_(self.hidden_layer.bias, -initrange, initrange)
+        torch.nn.init.uniform_(self.hidden2output.weight, -initrange, initrange)
+        torch.nn.init.uniform_(self.direct_connect_layer.weight, -initrange, initrange)
+        torch.nn.init.uniform_(self.output_bias, -initrange, initrange)
 
-    def forward(self, batch_data):
+    def forward(self, input):
         """
-        :param batch_data: Tensor, the shape is (BATCH_SIZE, N_GRAM, 1)
-        :return: probability tensor with the shape of (-1, dictionary_size)
+        :param input: tensor, with the shape of (BATCH_SIZE, N_GRAM - 1)
+        :return:
         """
-        word_features = self.C_matrix(batch_data)
-        word_features = word_features.view(-1, self.size_n_gram * self.embedding_dim)  # concat the representations of n-grams
-        hidden_value = self.hidden_activiation(self.hidden_layer(word_features))
-        hidden_value = self.hidden2output(hidden_value)
-        y = self.bias_final + hidden_value
-        if self.is_word_emb2output:
-            y += self.emb2output_layer(word_features)
-        prob_vector = self.final_activation(y)
-        return prob_vector
+        word_features = self.word_embedding(input)  # (BATCH_SIZE, SEQUENCE_LENGTH, EMBEDDING_DIM)
+        # (BATCH_SIZE, SEQUENCE_LENGTH * EMBEDDING_DIM)
+        concat_features = word_features.view(-1, self.context_size * self.embedding_dim)
+        # concat_features = torch.flatten(word_features, start_dim=1)
+        hidden_values = self.hidden2output(self.active_func(self.hidden_layer(concat_features)))
+        direct_connections = self.direct_connect_layer(concat_features)
+        y = self.output_bias + hidden_values + direct_connections
+        y_normalized = self.softmax(y)
+        return y_normalized
 
 
 # Temporarily leave PositionalEncoding module here. Will be moved somewhere else.
