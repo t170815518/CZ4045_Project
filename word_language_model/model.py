@@ -65,18 +65,7 @@ class RNNModel(nn.Module):
 
 class FNNModel(nn.Module):
     def __init__(self, vocab_size: int, embed_dim: int, hidden_dim: int, n_gram: int, device, is_share_param: bool):
-        """
-        Constructor of FNN model
-        :param vocab_size: int, the number of unique word in the vocabulary, vocab_size > 0
-        :param embed_dim: int, the size of vectors after the word id is projected by Matrix C, embed_dim > 0
-        :param hidden_dim: int, the number of units in the only hidden layer, hidden_dim > 0
-        :param n_gram: int, the number of words used to predict the next words = n_gram - 1, n_gram > 1
-        """
-        assert vocab_size > 0 and embed_dim > 0 and hidden_dim > 0 and n_gram > 1
-        if is_share_param:
-            assert embed_dim == hidden_dim
-        self.model_type = 'FNN'
-
+        ...
         super(FNNModel, self).__init__()
 
         self.context_size = n_gram - 1
@@ -93,7 +82,6 @@ class FNNModel(nn.Module):
         self.direct_connect_layer = torch.nn.Linear(self.context_size * embed_dim, vocab_size, bias=False)
         # output bias, a free parameter
         self.output_bias = torch.zeros(1, vocab_size, requires_grad=True, device=device)
-
         # softmax layer on top
         self.softmax = torch.nn.LogSoftmax(dim=-1)  # normalize along the row of tensors
 
@@ -113,8 +101,9 @@ class FNNModel(nn.Module):
         torch.nn.init.uniform_(self.direct_connect_layer.weight, -initrange, initrange)
         torch.nn.init.uniform_(self.output_bias, -initrange, initrange)
 
-    def forward(self, input, *args):
+    def forward(self, input, is_softmax: bool = False, *args):
         """
+        :param is_softmax: bool, true to pass the output through Softmax, false when text generation
         :param input: tensor, with the shape of (BATCH_SIZE, N_GRAM - 1)
         :return:
         """
@@ -130,8 +119,11 @@ class FNNModel(nn.Module):
             decoder_output = self.hidden2output(hidden_values)
         direct_connections = self.direct_connect_layer(concat_features)
         y = self.output_bias + decoder_output + direct_connections
-        y_normalized = self.softmax(y)
-        return y_normalized
+        if is_softmax:
+            y_normalized = self.softmax(y)
+            return y_normalized
+        else:
+            return y  # return logits for temperature sampling
 
 
 # Temporarily leave PositionalEncoding module here. Will be moved somewhere else.

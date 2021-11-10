@@ -75,8 +75,10 @@ with open(args.outf, 'w+', encoding='utf-8') as outf:
                 word_tensor = torch.Tensor([[word_idx]]).long().to(device)
                 input = torch.cat([input, word_tensor], 0)
             elif is_fnn_model:
-                output = model(input)
-                word_weights = output.div(args.temperature).exp().cpu()
+                output = model(input, False)  # get the logits
+                word_weights = output.div(args.temperature)
+                word_weights = torch.nn.functional.softmax(word_weights, dim=-1)
+                word_weights = word_weights.cpu()
                 word_idx = torch.multinomial(word_weights, 1)[0]
                 word_tensor = torch.Tensor([[word_idx]]).long().to(device)
                 input = torch.cat([input, word_tensor], 1)[:, 1:]  # update the window
