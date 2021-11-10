@@ -16,13 +16,13 @@ parser = argparse.ArgumentParser(description='PyTorch Wikitext-2 Language Model'
 # Model parameters.
 parser.add_argument('--data', type=str, default='./data/wikitext-2',
                     help='location of the data corpus')
-parser.add_argument('--checkpoint', type=str, default='./model.pt',
+parser.add_argument('--checkpoint', type=str, default='best_model.pt',
                     help='model checkpoint to use')
 parser.add_argument('--outf', type=str, default='generated.txt',
                     help='output file for generated text')
 parser.add_argument('--words', type=int, default='1000',
                     help='number of words to generate')
-parser.add_argument('--seed', type=int, default=1111,
+parser.add_argument('--seed', type=int, default=1500,
                     help='random seed')
 parser.add_argument('--cuda', action='store_true',
                     help='use CUDA')
@@ -31,6 +31,7 @@ parser.add_argument('--temperature', type=float, default=1.0,
 parser.add_argument('--log-interval', type=int, default=100,
                     help='reporting interval')
 args = parser.parse_args()
+print(args)
 
 # Set the random seed manually for reproducibility.
 torch.manual_seed(args.seed)
@@ -51,11 +52,20 @@ corpus = data.Corpus(args.data)
 ntokens = len(corpus.dictionary)
 
 is_transformer_model = hasattr(model, 'model_type') and model.model_type == 'Transformer'
-if not is_transformer_model:
+is_fnn_model = hasattr(model, 'model_type') and model.model_type == 'FNN'
+if not is_transformer_model and not is_fnn_model:
     hidden = model.init_hidden(1)
-input = torch.randint(ntokens, (1, 1), dtype=torch.long).to(device)
+if is_fnn_model:
+    input = torch.randint(ntokens, (1, 7), dtype=torch.long).to(device)  # generate contexts with 7 words
+else:
+    input = torch.randint(ntokens, (1, 1), dtype=torch.long).to(device)
 
-with open(args.outf, 'w') as outf:
+
+with open(args.outf, 'w+', encoding='utf-8') as outf:
+    for word in input[0]:
+        word = corpus.dictionary.idx2word[int(word)]
+        outf.write(word + " ")
+
     with torch.no_grad():  # no tracking history
         for i in range(args.words):
             if is_transformer_model:
@@ -64,6 +74,12 @@ with open(args.outf, 'w') as outf:
                 word_idx = torch.multinomial(word_weights, 1)[0]
                 word_tensor = torch.Tensor([[word_idx]]).long().to(device)
                 input = torch.cat([input, word_tensor], 0)
+            elif is_fnn_model:
+                output = model(input)
+                word_weights = output.div(args.temperature).exp().cpu()
+                word_idx = torch.multinomial(word_weights, 1)[0]
+                word_tensor = torch.Tensor([[word_idx]]).long().to(device)
+                input = torch.cat([input, word_tensor], 1)[:, 1:]  # update the window
             else:
                 output, hidden = model(input, hidden)
                 word_weights = output.squeeze().div(args.temperature).exp().cpu()

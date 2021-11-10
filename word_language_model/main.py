@@ -30,7 +30,7 @@ parser.add_argument('--lr', type=float, default=20,
                     help='initial learning rate')
 parser.add_argument('--clip', type=float, default=0.25,
                     help='gradient clipping')
-parser.add_argument('--epochs', type=int, default=40,
+parser.add_argument('--epochs', type=int, default=20,
                     help='upper epoch limit')
 parser.add_argument('--batch_size', type=int, default=20, metavar='N',
                     help='batch size')
@@ -46,17 +46,19 @@ parser.add_argument('--cuda', action='store_true',
                     help='use CUDA')
 parser.add_argument('--log-interval', type=int, default=200, metavar='N',
                     help='report interval')
-parser.add_argument('--save', type=str, default='model.pt',
+parser.add_argument('--save', type=str, default='best_model.pt',
                     help='path to save the final model')
 parser.add_argument('--onnx-export', type=str, default='',
                     help='path to export the final model in onnx format')
-
+parser.add_argument('--optimizer', type=str, choices=['SGD', 'Adam', 'RMSProp'], help="the type of optimizer to use",
+                    default='SGD')
 parser.add_argument('--nhead', type=int, default=2,
                     help='the number of heads in the encoder/decoder of the transformer model')
 parser.add_argument('--dry-run', action='store_true',
                     help='verify the code and the model')
 
 args = parser.parse_args()
+print(args)
 
 # Set the random seed manually for reproducibility.
 torch.manual_seed(args.seed)
@@ -108,7 +110,7 @@ ntokens = len(corpus.dictionary)
 if args.model == 'Transformer':
     model = model.TransformerModel(ntokens, args.emsize, args.nhead, args.nhid, args.nlayers, args.dropout).to(device)
 elif args.model == 'FNN':
-    model = model.FNNModel(ntokens, args.emsize, args.nhead, args.n_gram, device).to(device)
+    model = model.FNNModel(ntokens, args.emsize, args.nhid, args.n_gram, device, args.tied).to(device)
 else:
     model = model.RNNModel(args.model, ntokens, args.emsize, args.nhid, args.nlayers, args.dropout, args.tied). \
         to(device)
@@ -201,8 +203,12 @@ def train():
 
         # `clip_grad_norm` helps prevent the exploding gradient problem in RNNs / LSTMs.
         torch.nn.utils.clip_grad_norm_(model.parameters(), args.clip)
-        for p in model.parameters():
-            p.data.add_(p.grad, alpha=-lr)
+        if args.optimizer == 'Adam':
+            optimizer.step()
+        else:
+            for p in model.parameters():
+                p.data.add_(p.grad, alpha=-lr)
+
         total_loss += loss.item()
 
         if batch % args.log_interval == 0 and batch > 0:
@@ -234,6 +240,10 @@ best_val_loss = None
 
 # At any point you can hit Ctrl + C to break out of training early.
 try:
+    if args.optimizer == 'Adam':
+        optimizer = torch.optim.Adam(model.parameters(), lr)
+    elif args.optimizer == 'RMSProp':
+        optimizer = torch.optim.RMSprop(model.parameters(), lr)
     for epoch in range(1, args.epochs + 1):
         epoch_start_time = time.time()
         train()

@@ -73,17 +73,22 @@ class FNNModel(nn.Module):
         :param n_gram: int, the number of words used to predict the next words = n_gram - 1, n_gram > 1
         """
         assert vocab_size > 0 and embed_dim > 0 and hidden_dim > 0 and n_gram > 1
+        if is_share_param:
+            assert embed_dim == hidden_dim
+        self.model_type = 'FNN'
 
         super(FNNModel, self).__init__()
 
         self.context_size = n_gram - 1
         self.embedding_dim = embed_dim
+        self.is_share_param = is_share_param
 
         self.word_embedding = torch.nn.Embedding(vocab_size, embed_dim)
         # hidden layer
         self.hidden_layer = torch.nn.Linear(self.context_size * embed_dim, hidden_dim, bias=True)
         self.active_func = torch.nn.Tanh()
-        self.hidden2output = torch.nn.Linear(hidden_dim, vocab_size, bias=False)
+        if not is_share_param:
+            self.hidden2output = torch.nn.Linear(hidden_dim, vocab_size, bias=False)
         # direct connection between input features and output layer
         self.direct_connect_layer = torch.nn.Linear(self.context_size * embed_dim, vocab_size, bias=False)
         # output bias, a free parameter
@@ -103,11 +108,12 @@ class FNNModel(nn.Module):
         torch.nn.init.uniform_(self.word_embedding.weight, -initrange, initrange)
         torch.nn.init.uniform_(self.hidden_layer.weight, -initrange, initrange)
         torch.nn.init.uniform_(self.hidden_layer.bias, -initrange, initrange)
-        torch.nn.init.uniform_(self.hidden2output.weight, -initrange, initrange)
+        if not self.is_share_param:
+            torch.nn.init.uniform_(self.hidden2output.weight, -initrange, initrange)
         torch.nn.init.uniform_(self.direct_connect_layer.weight, -initrange, initrange)
         torch.nn.init.uniform_(self.output_bias, -initrange, initrange)
 
-    def forward(self, input):
+    def forward(self, input, *args):
         """
         :param input: tensor, with the shape of (BATCH_SIZE, N_GRAM - 1)
         :return:
@@ -116,9 +122,14 @@ class FNNModel(nn.Module):
         # (BATCH_SIZE, SEQUENCE_LENGTH * EMBEDDING_DIM)
         concat_features = word_features.view(-1, self.context_size * self.embedding_dim)
         # concat_features = torch.flatten(word_features, start_dim=1)
-        hidden_values = self.hidden2output(self.active_func(self.hidden_layer(concat_features)))
+        hidden_values = self.active_func(self.hidden_layer(concat_features))
+        if self.is_share_param:
+            matrix = self.word_embedding.weight
+            decoder_output = hidden_values @ matrix.t()
+        else:
+            decoder_output = self.hidden2output(hidden_values)
         direct_connections = self.direct_connect_layer(concat_features)
-        y = self.output_bias + hidden_values + direct_connections
+        y = self.output_bias + decoder_output + direct_connections
         y_normalized = self.softmax(y)
         return y_normalized
 
